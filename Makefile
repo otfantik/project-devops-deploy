@@ -25,3 +25,7 @@ lint-fix:
 	./gradlew spotlessApply
 
 .PHONY: build
+
+docker-push:
+	docker tag project-devops-deploy ghcr.io/otfantik/project-devops-deploy:latest
+	docker push ghcr.io/otfantik/project-devops-deploy:latest
