@@ -1,3 +1,5 @@
+[![CI/CD Pipeline](https://github.com/otfantik/project-devops-deploy/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/otfantik/project-devops-deploy/actions/workflows/ci-cd.yml)
+
 # Project DevOps Deploy
 
 Bulletin board service.
@@ -197,3 +199,13 @@ Override the host/port with `MANAGEMENT_SERVER_PORT` if you changed it; no Prome
     - Image shows up in bulletin show view (URL should either point to CDN or be a presigned S3 link).
     - Object exists in S3 bucket (check via AWS console or `aws s3 ls s3://your-bucket/bulletins/...`).
 5. Optional: run `curl -I "$(curl -s .../api/files/view?key=... | jq -r .url)"` to ensure the presigned URL is valid from the production environment.
+
+## Docker
+
+### Образ в GitHub Container Registry
+ghcr.io/otfantik/project-devops-deploy:latest
+
+### Запуск контейнера
+
+```bash
+docker run --rm -p 8080:8080 -p 9090:9090 ghcr.io/otfantik/project-devops-deploy:latest
