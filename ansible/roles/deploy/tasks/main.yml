@@ -7,13 +7,19 @@
     group: docker
     mode: '0755'
 
-- name: Create data directory for logs
+- name: Create data directory for images
   file:
-    path: /opt/project3/data
+    path: /opt/project3/images
     state: directory
     owner: sergeymazov
     group: docker
-    mode: '0755'
+    mode: '0777'
+
+- name: Login to GitHub Container Registry
+  docker_login:
+    registry_url: ghcr.io
+    username: "{{ ghcr_username }}"
+    password: "{{ ghcr_password }}"
 
 - name: Pull latest Docker image
   docker_image:
@@ -36,6 +42,6 @@
       - "8080:8080"
       - "9090:9090"
     volumes:
-      - /opt/project3/data:/tmp/bulletin-images
+      - /opt/project3/images:/tmp/bulletin-images
     env:
       SPRING_PROFILES_ACTIVE: "{{ spring_profiles_active | default('dev') }}"
