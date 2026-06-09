@@ -209,3 +209,11 @@ ghcr.io/otfantik/project-devops-deploy:latest
 
 ```bash
 docker run --rm -p 8080:8080 -p 9090:9090 ghcr.io/otfantik/project-devops-deploy:latest
+
+## Доступ к приложению
+
+Приложение доступно по адресу:
+http://hexletmazov.ddns.net:8080/api/bulletins
+
+
+Swagger UI: `http://hexletmazov.ddns.net:8080/swagger-ui/index.html`
