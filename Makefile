@@ -29,3 +29,6 @@ lint-fix:
 docker-push:
 	docker tag project-devops-deploy ghcr.io/otfantik/project-devops-deploy:latest
 	docker push ghcr.io/otfantik/project-devops-deploy:latest
+
+deploy:
+	ansible-playbook -i inventory.yml ansible/deploy.yml

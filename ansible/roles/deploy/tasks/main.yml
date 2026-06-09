@@ -1,0 +1,41 @@
+---
+- name: Create application directory
+  file:
+    path: /opt/project3
+    state: directory
+    owner: sergeymazov
+    group: docker
+    mode: '0755'
+
+- name: Create data directory for logs
+  file:
+    path: /opt/project3/data
+    state: directory
+    owner: sergeymazov
+    group: docker
+    mode: '0755'
+
+- name: Pull latest Docker image
+  docker_image:
+    name: "{{ docker_image }}"
+    source: pull
+  register: pull_result
+
+- name: Stop and remove old container if exists
+  docker_container:
+    name: project3-app
+    state: absent
+
+- name: Run new container
+  docker_container:
+    name: project3-app
+    image: "{{ docker_image }}"
+    state: started
+    restart_policy: always
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    volumes:
+      - /opt/project3/data:/tmp/bulletin-images
+    env:
+      SPRING_PROFILES_ACTIVE: "{{ spring_profiles_active | default('dev') }}"

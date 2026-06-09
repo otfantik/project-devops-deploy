@@ -1,0 +1,7 @@
+---
+- name: Deploy project3 application
+  hosts: hexlet-devops-project3
+  become: yes
+
+  roles:
+    - deploy

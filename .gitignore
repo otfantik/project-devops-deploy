@@ -36,3 +36,7 @@ out/
 ### VS Code ###
 .vscode/
 *.db
+# Ansible sensitive files
+inventory.yml
+playbook.yml
+ansible/vault.yml
