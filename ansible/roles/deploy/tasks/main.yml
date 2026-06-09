@@ -21,11 +21,10 @@
     username: "{{ ghcr_username }}"
     password: "{{ ghcr_password }}"
 
-- name: Pull latest Docker image
+- name: Pull specific version Docker image
   docker_image:
-    name: "{{ docker_image }}"
+    name: "ghcr.io/otfantik/project-devops-deploy:{{ docker_image_version }}"
     source: pull
-  register: pull_result
 
 - name: Stop and remove old container if exists
   docker_container:
@@ -35,7 +34,7 @@
 - name: Run new container
   docker_container:
     name: project3-app
-    image: "{{ docker_image }}"
+    image: "ghcr.io/otfantik/project-devops-deploy:{{ docker_image_version }}"
     state: started
     restart_policy: always
     ports:

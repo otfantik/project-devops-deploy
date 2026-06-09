@@ -31,4 +31,7 @@ docker-push:
 	docker push ghcr.io/otfantik/project-devops-deploy:latest
 
 deploy:
-	ansible-playbook -i inventory.yml ansible/deploy.yml
+	ansible-playbook -i inventory.yml ansible/deploy.yml --ask-vault-pass -e "docker_image_version=$(VERSION)"
+
+deploy-latest:
+	ansible-playbook -i inventory.yml ansible/deploy.yml --ask-vault-pass -e "docker_image_version=latest"
