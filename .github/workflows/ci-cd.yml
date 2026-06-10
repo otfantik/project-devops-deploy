@@ -24,3 +24,39 @@ jobs:
 
       - name: Run backend tests
         run: ./gradlew test --no-daemon
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add server to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: Copy docker-compose to server
+        run: |
+          scp docker-compose.yml sergeymazov@${{ secrets.SERVER_IP }}:/opt/project3/
+
+      - name: Create .env on server
+        run: |
+          ssh sergeymazov@${{ secrets.SERVER_IP }} "echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' > /opt/project3/.env"
+
+      - name: Deploy with Docker Compose
+        run: |
+          ssh sergeymazov@${{ secrets.SERVER_IP }} << 'EOF'
+            cd /opt/project3
+            sudo docker compose pull
+            sudo docker compose run --rm migrate
+            sudo docker compose up -d
+          EOF
