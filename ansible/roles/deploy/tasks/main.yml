@@ -28,14 +28,14 @@
     password: "{{ ghcr_password }}"
 
 - name: Pull latest Docker images
-  docker_compose:
+  docker_compose_v2:
     project_src: /opt/project3
     files:
       - docker-compose.yml
-    pull: yes
+    pull: always
 
 - name: Run migrations
-  docker_compose:
+  docker_compose_v2:
     project_src: /opt/project3
     files:
       - docker-compose.yml
@@ -44,7 +44,7 @@
     state: present
 
 - name: Start all services
-  docker_compose:
+  docker_compose_v2:
     project_src: /opt/project3
     files:
       - docker-compose.yml
