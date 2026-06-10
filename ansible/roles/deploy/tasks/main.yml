@@ -15,32 +15,37 @@
     group: docker
     mode: '0777'
 
+- name: Copy docker-compose.yml to server
+  template:
+    src: docker-compose.yml.j2
+    dest: /opt/project3/docker-compose.yml
+    mode: '0644'
+
 - name: Login to GitHub Container Registry
   docker_login:
     registry_url: ghcr.io
     username: "{{ ghcr_username }}"
     password: "{{ ghcr_password }}"
 
-- name: Pull specific version Docker image
-  docker_image:
-    name: "ghcr.io/otfantik/project-devops-deploy:{{ docker_image_version }}"
-    source: pull
+- name: Pull latest Docker images
+  docker_compose:
+    project_src: /opt/project3
+    files:
+      - docker-compose.yml
+    pull: yes
 
-- name: Stop and remove old container if exists
-  docker_container:
-    name: project3-app
-    state: absent
+- name: Run migrations
+  docker_compose:
+    project_src: /opt/project3
+    files:
+      - docker-compose.yml
+    services:
+      - migrate
+    state: present
 
-- name: Run new container
-  docker_container:
-    name: project3-app
-    image: "ghcr.io/otfantik/project-devops-deploy:{{ docker_image_version }}"
-    state: started
-    restart_policy: always
-    ports:
-      - "8080:8080"
-      - "9090:9090"
-    volumes:
-      - /opt/project3/images:/tmp/bulletin-images
-    env:
-      SPRING_PROFILES_ACTIVE: "{{ spring_profiles_active | default('dev') }}"
+- name: Start all services
+  docker_compose:
+    project_src: /opt/project3
+    files:
+      - docker-compose.yml
+    state: present

@@ -1,0 +1,118 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: project3-postgres
+    environment:
+      POSTGRES_DB: bulletins
+      POSTGRES_USER: bulletin_user
+      POSTGRES_PASSWORD: {{ db_password }}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bulletin_user -d bulletins"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - project3-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: project3-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: {{ minio_root_user }}
+      MINIO_ROOT_PASSWORD: {{ minio_root_password }}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - project3-network
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: project3-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: {{ minio_root_user }}
+      MINIO_ROOT_PASSWORD: {{ minio_root_password }}
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD};
+      mc mb local/{{ minio_bucket }} --ignore-existing;
+      mc anonymous set download local/{{ minio_bucket }};
+      echo 'MinIO bucket {{ minio_bucket }} created';
+      "
+    networks:
+      - project3-network
+    restart: "no"
+
+  migrate:
+    image: ghcr.io/otfantik/project-devops-deploy:latest
+    container_name: project3-migrate
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/bulletins
+      SPRING_DATASOURCE_USERNAME: bulletin_user
+      SPRING_DATASOURCE_PASSWORD: {{ db_password }}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      STORAGE_S3_ENDPOINT: http://minio:9000
+      STORAGE_S3_ACCESSKEY: {{ minio_root_user }}
+      STORAGE_S3_SECRETKEY: {{ minio_root_password }}
+      STORAGE_S3_BUCKET: {{ minio_bucket }}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    restart: "no"
+    networks:
+      - project3-network
+
+  app:
+    image: ghcr.io/otfantik/project-devops-deploy:latest
+    container_name: project3-app
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/bulletins
+      SPRING_DATASOURCE_USERNAME: bulletin_user
+      SPRING_DATASOURCE_PASSWORD: {{ db_password }}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      STORAGE_S3_ENDPOINT: http://minio:9000
+      STORAGE_S3_ACCESSKEY: {{ minio_root_user }}
+      STORAGE_S3_SECRETKEY: {{ minio_root_password }}
+      STORAGE_S3_BUCKET: {{ minio_bucket }}
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    volumes:
+      - /opt/project3/images:/tmp/bulletin-images
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    networks:
+      - project3-network
+
+volumes:
+  postgres_data:
+  minio_data:
+
+networks:
+  project3-network:
+    driver: bridge
