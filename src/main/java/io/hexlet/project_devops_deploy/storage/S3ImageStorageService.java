@@ -13,6 +13,7 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
+import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -34,21 +35,30 @@ public class S3ImageStorageService implements ImageStorageService {
     }
 
     private S3Client buildClient(S3StorageProperties props, StaticCredentialsProvider credentialsProvider) {
-        S3ClientBuilder builder = S3Client.builder().region(Region.of(props.region()))
+        S3ClientBuilder builder = S3Client.builder()
+                .region(Region.of(props.region()))
                 .credentialsProvider(credentialsProvider);
-
         if (StringUtils.hasText(props.endpoint())) {
             builder.endpointOverride(URI.create(props.endpoint()));
+            // Включаем path-style access для MinIO
+            S3Configuration config = S3Configuration.builder()
+                    .pathStyleAccessEnabled(true)
+                    .build();
+            builder.serviceConfiguration(config);
         }
-
         return builder.build();
     }
 
     private S3Presigner buildPresigner(S3StorageProperties props, StaticCredentialsProvider credentialsProvider) {
-        S3Presigner.Builder builder = S3Presigner.builder().region(Region.of(props.region()))
+        S3Presigner.Builder builder = S3Presigner.builder()
+                .region(Region.of(props.region()))
                 .credentialsProvider(credentialsProvider);
         if (StringUtils.hasText(props.endpoint())) {
             builder.endpointOverride(URI.create(props.endpoint()));
+            S3Configuration config = S3Configuration.builder()
+                    .pathStyleAccessEnabled(true)
+                    .build();
+            builder.serviceConfiguration(config);
         }
         return builder.build();
     }

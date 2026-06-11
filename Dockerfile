@@ -20,9 +20,9 @@ RUN apk add --no-cache curl
 COPY --from=backend-build /app/build/libs/*.jar app.jar
 RUN mkdir -p /app/static
 COPY --from=frontend-build /app/dist /app/static
-RUN mkdir -p /tmp/bulletin-images && chown -R appuser:appgroup /tmp/bulletin-images
+RUN mkdir -p /tmp/bulletin-images && chown -R appuser:appgroup /tmp/bulletin-images && chmod -R 755 /tmp/bulletin-images
 USER appuser
 EXPOSE 8080 9090
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:8080/actuator/health || exit 1
-ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -jar app.jar"]
+  ENTRYPOINT ["sh", "-c", "if [ \"$RUN_MIGRATIONS\" = \"true\" ]; then java -cp app.jar io.hexlet.project_devops_deploy.MigrationRunner; else java ${JAVA_OPTS} -jar app.jar; fi"]

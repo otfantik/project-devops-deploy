@@ -60,31 +60,15 @@ services:
       - project3-network
     restart: "no"
 
-  migrate:
-    image: ghcr.io/otfantik/project-devops-deploy:latest
-    container_name: project3-migrate
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/bulletins
-      SPRING_DATASOURCE_USERNAME: bulletin_user
-      SPRING_DATASOURCE_PASSWORD: {{ db_password }}
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      STORAGE_S3_ENDPOINT: http://minio:9000
-      STORAGE_S3_ACCESSKEY: {{ minio_root_user }}
-      STORAGE_S3_SECRETKEY: {{ minio_root_password }}
-      STORAGE_S3_BUCKET: {{ minio_bucket }}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      minio-init:
-        condition: service_completed_successfully
-    restart: "no"
-    networks:
-      - project3-network
-
   app:
     image: ghcr.io/otfantik/project-devops-deploy:latest
     container_name: project3-app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9090/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/bulletins
@@ -92,9 +76,11 @@ services:
       SPRING_DATASOURCE_PASSWORD: {{ db_password }}
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       STORAGE_S3_ENDPOINT: http://minio:9000
+      STORAGE_S3_REGION: us-east-1
       STORAGE_S3_ACCESSKEY: {{ minio_root_user }}
       STORAGE_S3_SECRETKEY: {{ minio_root_password }}
       STORAGE_S3_BUCKET: {{ minio_bucket }}
+      STORAGE_S3_PATH_STYLE: true
     ports:
       - "8080:8080"
       - "9090:9090"
@@ -103,8 +89,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - project3-network

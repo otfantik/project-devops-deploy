@@ -1,4 +1,3 @@
----
 - name: Create application directory
   file:
     path: /opt/project3
@@ -22,30 +21,35 @@
     mode: '0644'
 
 - name: Login to GitHub Container Registry
-  docker_login:
+  community.docker.docker_login:
     registry_url: ghcr.io
     username: "{{ ghcr_username }}"
     password: "{{ ghcr_password }}"
 
-- name: Pull latest Docker images
-  docker_compose_v2:
+- name: Pull images and start all services except migrate
+  community.docker.docker_compose_v2:
     project_src: /opt/project3
     files:
       - docker-compose.yml
     pull: always
-
-- name: Run migrations
-  docker_compose_v2:
-    project_src: /opt/project3
-    files:
-      - docker-compose.yml
-    services:
-      - migrate
     state: present
 
-- name: Start all services
-  docker_compose_v2:
-    project_src: /opt/project3
-    files:
-      - docker-compose.yml
-    state: present
+- name: Run migration
+  shell: |
+    docker run --rm \
+      --network project3_project3-network \
+      -e SPRING_PROFILES_ACTIVE=migrate \
+      -e SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/bulletins \
+      -e SPRING_DATASOURCE_USERNAME=bulletin_user \
+      -e SPRING_DATASOURCE_PASSWORD={{ db_password }} \
+      -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
+      ghcr.io/otfantik/project-devops-deploy:latest \
+      java -jar app.jar
+  register: migration
+  failed_when: false
+
+- name: Verify database migration
+  shell: |
+    docker exec project3-postgres psql -U bulletin_user -d bulletins -c "SELECT COUNT(*) FROM bulletins;"
+  register: verify
+  failed_when: verify.rc != 0

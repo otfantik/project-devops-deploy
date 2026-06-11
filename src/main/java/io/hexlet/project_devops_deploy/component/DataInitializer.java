@@ -25,7 +25,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StreamUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-@Component
+// @Component
 @Profile("!test")
 @RequiredArgsConstructor
 @Slf4j
