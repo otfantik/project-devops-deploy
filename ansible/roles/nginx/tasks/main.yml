@@ -1,0 +1,71 @@
+---
+- name: Create nginx directory
+  file:
+    path: /opt/nginx
+    state: directory
+    mode: '0755'
+
+- name: Copy nginx configuration
+  template:
+    src: nginx.conf.j2
+    dest: /opt/nginx/nginx.conf
+    mode: '0644'
+
+- name: Create temporary directory for static files
+  tempfile:
+    state: directory
+  register: temp_static
+  delegate_to: localhost
+  become: no
+  run_once: yes
+
+- name: Copy static files to temp directory
+  copy:
+    src: "{{ playbook_dir }}/../frontend/dist/"
+    dest: "{{ temp_static.path }}/static/"
+    mode: '0644'
+  delegate_to: localhost
+  become: no
+
+- name: Copy static files from temp to server
+  copy:
+    src: "{{ temp_static.path }}/static/"
+    dest: /opt/nginx/static/
+    mode: '0644'
+  become: yes
+
+- name: Remove temp directory
+  file:
+    path: "{{ temp_static.path }}"
+    state: absent
+  delegate_to: localhost
+  become: no
+
+- name: Create Dockerfile for nginx
+  template:
+    src: Dockerfile.nginx.j2
+    dest: /opt/nginx/Dockerfile
+    mode: '0644'
+
+- name: Build nginx image
+  community.docker.docker_image:
+    name: project3-nginx
+    build:
+      path: /opt/nginx
+      dockerfile: Dockerfile
+    source: build
+    state: present
+    force_source: yes
+
+- name: Run nginx container
+  community.docker.docker_container:
+    name: project3-nginx
+    image: project3-nginx
+    state: started
+    restart_policy: always
+    ports:
+      - "80:80"
+    networks:
+      - name: project3_project3-network
+    volumes:
+      - nginx_cache:/var/cache/nginx

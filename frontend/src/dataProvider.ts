@@ -1,4 +1,9 @@
-import { type DataProvider, fetchUtils, type Identifier } from "react-admin";
+import {
+  type DataProvider,
+  fetchUtils,
+  type Identifier,
+  type RaRecord,
+} from "react-admin";
 
 const apiUrl = import.meta.env.VITE_API_URL ?? "/api";
 const fileUploadUrl = `${apiUrl}/files/upload`;
@@ -133,11 +138,11 @@ const extractImageFile = (data: MutablePayload) => {
 };
 
 const preparePayload = async (data: JsonRecord) => {
+  const rawFile = extractImageFile(data as MutablePayload);
   const payload = { ...data } as MutablePayload;
   delete payload.image;
   delete payload.imageUrl;
 
-  const rawFile = extractImageFile(payload);
   if (rawFile) {
     const result = await uploadImage(rawFile);
     if (result?.key) {
@@ -156,7 +161,8 @@ export const dataProvider: DataProvider = {
       filter: params.filter,
     });
     const { json } = await httpClient(`${getCollectionUrl(resource)}${query}`);
-    return readPagePayload(json);
+    const { data, total } = readPagePayload(json);
+    return { data: data as RaRecord[], total };
   },
 
   getOne: async (resource, params) => {
@@ -179,7 +185,8 @@ export const dataProvider: DataProvider = {
       filter,
     });
     const { json } = await httpClient(`${getCollectionUrl(resource)}${query}`);
-    return readPagePayload(json);
+    const { data, total } = readPagePayload(json);
+    return { data: data as RaRecord[], total };
   },
 
   create: async (resource, params) => {
@@ -214,7 +221,9 @@ export const dataProvider: DataProvider = {
 
   delete: async (resource, params) => {
     await httpClient(getRecordUrl(resource, params.id), { method: "DELETE" });
-    return { data: params.previousData ?? { id: params.id } };
+    return {
+      data: (params.previousData ?? { id: params.id }) as RaRecord,
+    };
   },
 
   deleteMany: async (resource, params) => {

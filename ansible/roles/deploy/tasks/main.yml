@@ -26,30 +26,60 @@
     username: "{{ ghcr_username }}"
     password: "{{ ghcr_password }}"
 
-- name: Pull images and start all services except migrate
+- name: Pull images
   community.docker.docker_compose_v2:
     project_src: /opt/project3
     files:
       - docker-compose.yml
     pull: always
+
+- name: Start postgres and minio
+  community.docker.docker_compose_v2:
+    project_src: /opt/project3
+    files:
+      - docker-compose.yml
+    services:
+      - postgres
+      - minio
     state: present
+
+- name: Wait for postgres to be healthy
+  wait_for:
+    timeout: 30
 
 - name: Run migration
   shell: |
     docker run --rm \
       --network project3_project3-network \
-      -e SPRING_PROFILES_ACTIVE=migrate \
+      -e SPRING_PROFILES_ACTIVE=dev \
       -e SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/bulletins \
       -e SPRING_DATASOURCE_USERNAME=bulletin_user \
       -e SPRING_DATASOURCE_PASSWORD={{ db_password }} \
       -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
-      ghcr.io/otfantik/project-devops-deploy:latest \
-      java -jar app.jar
+      -e SPRING_MAIN_WEB_APPLICATION_TYPE=none \
+      ghcr.io/otfantik/project-devops-deploy:latest
   register: migration
   failed_when: false
 
-- name: Verify database migration
+- name: Start app
+  community.docker.docker_compose_v2:
+    project_src: /opt/project3
+    files:
+      - docker-compose.yml
+    services:
+      - app
+    state: present
+
+- name: Wait for DataInitializer to load images
+  pause:
+    seconds: 30
+
+- name: Set public access on MinIO bucket
   shell: |
-    docker exec project3-postgres psql -U bulletin_user -d bulletins -c "SELECT COUNT(*) FROM bulletins;"
-  register: verify
-  failed_when: verify.rc != 0
+    docker run --rm --network project3_project3-network \
+      -e MINIO_ROOT_USER={{ minio_root_user }} \
+      -e MINIO_ROOT_PASSWORD={{ minio_root_password }} \
+      minio/mc:latest \
+      sh -c "mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} && mc anonymous set download local/{{ minio_bucket }}"
+  register: set_public
+  failed_when: false
