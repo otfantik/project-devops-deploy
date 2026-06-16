@@ -41,3 +41,6 @@ ansible-deps:
 
 code-setup:
 	ansible-galaxy collection install -r requirements.yml
+
+setup:
+	ansible-galaxy collection install -r requirements.yml
