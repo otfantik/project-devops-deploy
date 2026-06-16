@@ -1,0 +1,95 @@
+---
+- name: Install certbot and dependencies
+  apt:
+    name:
+      - certbot
+      - python3-certbot-nginx
+      - nginx
+    state: present
+    update_cache: yes
+
+- name: Stop nginx container if running
+  docker_container:
+    name: project3-nginx
+    state: stopped
+  ignore_errors: yes
+
+- name: Remove old nginx container
+  docker_container:
+    name: project3-nginx
+    state: absent
+  ignore_errors: yes
+
+- name: Run certbot to obtain certificate
+  shell: |
+    certbot certonly --standalone \
+      --non-interactive \
+      --agree-tos \
+      --email {{ certbot_email }} \
+      -d {{ domain_name }} \
+      --http-01-port 80
+  register: certbot_result
+  failed_when: false
+
+- name: Check if certificate exists
+  stat:
+    path: /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem
+  register: cert_file
+
+- name: Fail if certificate not obtained
+  fail:
+    msg: "Certificate not obtained. Check logs above."
+  when: not cert_file.stat.exists
+
+- name: Copy nginx SSL config
+  template:
+    src: nginx-ssl.conf.j2
+    dest: /opt/nginx/nginx.conf
+    mode: '0644'
+
+- name: Copy SSL certificates to nginx directory
+  copy:
+    src: "/etc/letsencrypt/live/{{ domain_name }}/{{ item }}"
+    dest: "/opt/nginx/{{ item }}"
+    remote_src: yes
+    mode: '0644'
+  loop:
+    - fullchain.pem
+    - privkey.pem
+
+- name: Build nginx image with SSL
+  community.docker.docker_image:
+    name: project3-nginx
+    build:
+      path: /opt/nginx
+      dockerfile: Dockerfile
+    source: build
+    state: present
+    force_source: yes
+
+- name: Run nginx container with SSL
+  community.docker.docker_container:
+    name: project3-nginx
+    image: project3-nginx
+    state: started
+    restart_policy: always
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - name: project3_project3-network
+    volumes:
+      - nginx_cache:/var/cache/nginx
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+
+- name: Setup auto-renewal cron job
+  cron:
+    name: "Certbot auto-renewal"
+    minute: "0"
+    hour: "3"
+    day: "*"
+    month: "*"
+    weekday: "1"
+    job: "certbot renew --quiet --post-hook 'docker restart project3-nginx'"
+    user: root
+    state: present

@@ -36,7 +36,41 @@ out/
 ### VS Code ###
 .vscode/
 *.db
-# Ansible sensitive files
+
+### Ansible ###
 inventory.yml
 playbook.yml
 ansible/vault.yml
+ansible/*.retry
+ansible/group_vars/
+ansible/host_vars/
+
+### OS ###
+.DS_Store
+Thumbs.db
+
+### Secrets ###
+.env
+*.pem
+*.key
+*.crt
+*.csr
+
+### Docker ###
+.dockerignore
+docker-compose.override.yml
+
+### Frontend ###
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+### Gradle ###
+gradle.properties
+*.lock
+*.log

@@ -35,3 +35,6 @@ deploy:
 
 deploy-latest:
 	ansible-playbook -i inventory.yml ansible/deploy.yml --ask-vault-pass -e "docker_image_version=latest"
+
+ansible-deps:
+	ansible-galaxy collection install -r ansible/requirements.yml
